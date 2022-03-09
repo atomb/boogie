@@ -126,7 +126,6 @@ namespace VC
         keepAtAll = new HashSet<Block /*!*/>();
 
       // async interface
-      private Checker checker;
       private int splitNum;
       internal VCGen.ErrorReporter reporter;
 
@@ -1273,27 +1272,7 @@ namespace VC
         }
       }
 
-      public Checker Checker
-      {
-        get
-        {
-          Contract.Ensures(Contract.Result<Checker>() != null);
-
-          Contract.Assert(checker != null);
-          return checker;
-        }
-      }
-
-      public Task ProverTask
-      {
-        get
-        {
-          Contract.Assert(checker != null);
-          return checker.ProverTask;
-        }
-      }
-
-      public void ReadOutcome(VerifierCallback callback, ref ConditionGeneration.Outcome curOutcome, out bool proverFailed, ref int totalResourceCount)
+      public void ReadOutcome(Checker checker, VerifierCallback callback, ref ConditionGeneration.Outcome curOutcome, out bool proverFailed, ref int totalResourceCount)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
@@ -1375,8 +1354,6 @@ namespace VC
         lock (Implementation) {
           Implementation.Blocks = blocks;
 
-          this.checker = checker;
-
           var absyIds = new ControlFlowIdMap<Absy>();
 
           ProverContext ctx = checker.TheoremProver.Context;
@@ -1396,7 +1373,7 @@ namespace VC
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
           reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
-            mvInfo, Checker.TheoremProver.Context, parent.program);
+            mvInfo, checker.TheoremProver.Context, parent.program);
           
           if (options.TraceVerify && no >= 0)
           {
@@ -1491,12 +1468,6 @@ namespace VC
 
           SoundnessCheck(cache, exit, newcopies);
         }
-      }
-
-      public void ReleaseChecker()
-      {
-        Checker.GoBackToIdle();
-        checker = null;
       }
     }
 }

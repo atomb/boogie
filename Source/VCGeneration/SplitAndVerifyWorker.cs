@@ -101,11 +101,11 @@ namespace VC
       try {
         cancellationToken.ThrowIfCancellationRequested();
         StartCheck(split, checker, cancellationToken);
-        await split.ProverTask;
-        await ProcessResult(split, cancellationToken);
+        await checker.ProverTask;
+        await ProcessResult(split, checker, cancellationToken);
       }
       finally {
-        split.ReleaseChecker();
+        checker.GoBackToIdle();
       }
     }
 
@@ -126,7 +126,7 @@ namespace VC
       split.BeginCheck(checker, callback, mvInfo, currentSplitNumber, timeout, implementation.GetResourceLimit(options), cancellationToken);
     }
 
-    private async Task ProcessResult(Split split, CancellationToken cancellationToken)
+    private async Task ProcessResult(Split split, Checker checker, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -134,7 +134,7 @@ namespace VC
         }
       }
 
-      split.ReadOutcome(callback, ref outcome, out var proverFailed, ref totalResourceCount);
+      split.ReadOutcome(checker, callback, ref outcome, out var proverFailed, ref totalResourceCount);
 
       if (TrackingProgress) {
         lock (this) {
@@ -154,10 +154,10 @@ namespace VC
         return;
       }
 
-      await HandleProverFailure(split, cancellationToken);
+      await HandleProverFailure(split, checker, cancellationToken);
     }
 
-    private async Task HandleProverFailure(Split split, CancellationToken cancellationToken)
+    private async Task HandleProverFailure(Split split, Checker checker, CancellationToken cancellationToken)
     {
       if (split.LastChance) {
         string msg = "some timeout";
@@ -165,7 +165,7 @@ namespace VC
           msg = split.reporter.resourceExceededMessage;
         }
 
-        callback.OnCounterexample(split.ToCounterexample(split.Checker.TheoremProver.Context), msg);
+        callback.OnCounterexample(split.ToCounterexample(checker.TheoremProver.Context), msg);
         outcome = Outcome.Errors;
         return;
       }
