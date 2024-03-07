@@ -103,7 +103,7 @@ public static class FocusAttribute
     {
       var s = new HashSet<Block>();
       var pred = b.Predecessors.Where(subgraph.Contains).ToList();
-      if (pred.Count != 0)
+      if (pred.Count != 0 && pred.All(dominators.ContainsKey))
       {
         s.UnionWith(dominators[pred[0]]);
         pred.ForEach(blk => s.IntersectWith(dominators[blk]));
